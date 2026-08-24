@@ -8,15 +8,14 @@ interface RouletteModalProps {
   onClose: () => void;
   victim: any;
   attacker?: any;
-  onFinish?: (penalty: any) => void;
+  onFinish?: (penalty: any, extraConfig?: string) => void;
 }
 
-// Medidas fijas milimétricas
-const CARD_WIDTH = 200; // Ancho exacto de cada carta en px
-const CARD_GAP = 16;    // Espacio entre cartas (gap) en px
-const STEP = CARD_WIDTH + CARD_GAP; // 216px por casilla
-const REEL_SIZE = 45;   // Total de cartas en el carril
-const WIN_INDEX = 30;   // Casilla fija de impacto
+const CARD_WIDTH = 200;
+const CARD_GAP = 16;
+const STEP = CARD_WIDTH + CARD_GAP;
+const REEL_SIZE = 45;
+const WIN_INDEX = 30;
 
 export default function RouletteModal({
   isOpen,
@@ -29,6 +28,7 @@ export default function RouletteModal({
   const [selectedPenalty, setSelectedPenalty] = useState<any>(null);
   const [reelItems, setReelItems] = useState<any[]>([]);
   const [offset, setOffset] = useState(0);
+  const [customValue, setCustomValue] = useState("");
 
   const reelContainerRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -43,7 +43,6 @@ export default function RouletteModal({
       ? attacker
       : attacker?.riotId || attacker?.gameName || attacker?.name || "Rival";
 
-  // Sintetizador de audio integrado
   const initAudio = () => {
     if (!audioCtxRef.current && typeof window !== "undefined") {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -88,7 +87,6 @@ export default function RouletteModal({
     } catch {}
   };
 
-  // Genera la secuencia asegurando que haya variedad
   useEffect(() => {
     if (isOpen && PENALTIES.length > 0) {
       const randomReel: any[] = [];
@@ -98,6 +96,7 @@ export default function RouletteModal({
       }
       setReelItems(randomReel);
       setSelectedPenalty(null);
+      setCustomValue("");
       setOffset(0);
       setSpinning(false);
     }
@@ -110,23 +109,17 @@ export default function RouletteModal({
     initAudio();
     setSpinning(true);
 
-    // 1. Elegir penitencia ganadora e inyectarla en la casilla exacta de impacto (WIN_INDEX)
     const winningPenalty = PENALTIES[Math.floor(Math.random() * PENALTIES.length)];
     const updatedReel = [...reelItems];
     updatedReel[WIN_INDEX] = winningPenalty;
     setReelItems(updatedReel);
 
-    // 2. Medir el ancho real del contenedor en pantalla
     const containerWidth = reelContainerRef.current?.clientWidth || 700;
-    
-    // Centro de la carta ganadora = (WIN_INDEX * 216) + 100
     const cardCenter = WIN_INDEX * STEP + CARD_WIDTH / 2;
-    // Alineación exacta con la línea central (containerWidth / 2)
     const targetOffset = cardCenter - containerWidth / 2;
 
     setOffset(targetOffset);
 
-    // 3. Audio sincronizado con desaceleración
     let currentDelay = 50;
     const startTime = Date.now();
     const duration = 5000;
@@ -142,41 +135,46 @@ export default function RouletteModal({
     };
     setTimeout(playSoundLoop, currentDelay);
 
-    // 4. Finalización y envío
     setTimeout(async () => {
       setSpinning(false);
       setSelectedPenalty(winningPenalty);
       playVictorySound();
-
-      try {
-        await fetch("/api/blueshell", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            attacker: typeof attacker === "object" ? attacker : { riotId: attackerName },
-            victim: typeof victim === "object" ? victim : { riotId: victimName },
-            penalty: winningPenalty,
-          }),
-        });
-      } catch (err) {
-        console.error("Error al enviar a Discord:", err);
-      }
-
-      if (onFinish) {
-        onFinish(winningPenalty);
-      }
     }, duration + 300);
   };
+
+  const handleConfirmPenalty = async () => {
+    if (!selectedPenalty) return;
+
+    try {
+      await fetch("/api/blueshell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attacker: typeof attacker === "object" ? attacker : { riotId: attackerName },
+          victim: typeof victim === "object" ? victim : { riotId: victimName },
+          penalty: selectedPenalty,
+          extraConfig: customValue || null,
+        }),
+      });
+    } catch (err) {
+      console.error("Error al enviar a Discord:", err);
+    }
+
+    if (onFinish) {
+      onFinish(selectedPenalty, customValue);
+    }
+    onClose();
+  };
+
+  const needsInput = selectedPenalty && [1, 2, 3, 15].includes(selectedPenalty.id);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
       <div className="relative w-full max-w-3xl rounded-3xl border-2 border-blue-500/30 bg-slate-900/95 p-6 sm:p-8 text-center shadow-2xl shadow-blue-500/20 overflow-hidden">
         
-        {/* Luces de fondo */}
         <div className="absolute -top-24 -left-24 w-60 h-60 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Cabecera */}
         <div className="relative z-10 flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
           <div className="flex items-center gap-3">
             <span className="text-3xl animate-pulse">🐚💥</span>
@@ -199,20 +197,16 @@ export default function RouletteModal({
           )}
         </div>
 
-        {/* Contenedor del Carril */}
         <div className="relative z-10 my-6">
-          {/* Puntero Láser Central (alineado al 50% exacto) */}
           <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 z-30 pointer-events-none">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
             <div className="h-full w-full bg-amber-400 shadow-[0_0_12px_#fbbf24]" />
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
           </div>
 
-          {/* Sombras laterales */}
           <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-20 pointer-events-none" />
           <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-900 via-slate-900/80 to-transparent z-20 pointer-events-none" />
 
-          {/* Carril de tarjetas */}
           <div
             ref={reelContainerRef}
             className="w-full h-44 bg-slate-950/90 rounded-2xl border border-slate-800 flex items-center overflow-hidden relative shadow-inner"
@@ -250,7 +244,6 @@ export default function RouletteModal({
           </div>
         </div>
 
-        {/* Panel Inferior */}
         <div className="relative z-10 pt-2">
           {selectedPenalty ? (
             <div className="animate-in zoom-in-95 duration-200 space-y-4">
@@ -263,11 +256,47 @@ export default function RouletteModal({
                 </p>
               </div>
 
+              {needsInput && (
+                <div className="flex flex-col gap-1 text-left bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-amber-300">
+                    {selectedPenalty.id === 1 && "Escribe el campeón que le vas a prohibir/imponer:"}
+                    {selectedPenalty.id === 2 && "Selecciona los hechizos obligatorios:"}
+                    {selectedPenalty.id === 3 && "Escribe el ítem troll (para el 2do objeto):"}
+                    {selectedPenalty.id === 15 && "Escribe los campeones o skins de la lista:"}
+                  </label>
+
+                  {selectedPenalty.id === 2 ? (
+                    <select
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs"
+                      onChange={(e) => setCustomValue(e.target.value)}
+                      defaultValue="ghost_heal"
+                    >
+                      <option value="ghost_heal">Fantasma + Curar</option>
+                      <option value="exhaust_ignite">Extenuación + Prender</option>
+                      <option value="cleanse_tp">Limpiar + Teleport</option>
+                      <option value="smite_flash">Smite + Flash (fuera de jungla)</option>
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={
+                        selectedPenalty.id === 1 ? "Ej: Teemo, Yuumi..." :
+                        selectedPenalty.id === 3 ? "Ej: Placa del Hombre Muerto..." :
+                        "Escribe las opciones aquí..."
+                      }
+                      className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                      value={customValue}
+                      onChange={(e) => setCustomValue(e.target.value)}
+                    />
+                  )}
+                </div>
+              )}
+
               <button
-                onClick={onClose}
+                onClick={handleConfirmPenalty}
                 className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition"
               >
-                Cerrar y Ver Tabla
+                Cerrar y Enviar Castigo 🚀
               </button>
             </div>
           ) : (
