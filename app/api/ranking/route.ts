@@ -5,13 +5,13 @@ const REGION = 'americas';
 const PLATFORM = 'la2';
 
 const PLAYERS = [
-  { name: 'Barry', tag: '24081' },
-  { name: 'Tarikk', tag: 'LAS' },
-  { name: 'Bloodme', tag: 'LAS' },
-  { name: 'DakaH', tag: 'Saiko' },
-  { name: 'Disprezz', tag: 'LAS' },
-  { name: 'Wachumeiket', tag: 'LAS' },
-  { name: 'Jamie Tarttッ', tag: '999' },
+  { name: 'Barry', tag: '24081', discordId: '410258026608459786' },
+  { name: 'Tarikk', tag: 'LAS', discordId: '536261498276937749' },
+  { name: 'Bloodme', tag: 'LAS', discordId: '1079568485052579950' },
+  { name: 'DakaH', tag: 'Saiko', discordId: '355153243036188682' },
+  { name: 'Disprezz', tag: 'LAS', discordId: '436304189447077888' },
+  { name: 'Wachumeiket', tag: 'LAS', discordId: '471115606092021763' },
+  { name: 'Jamie Tarttッ', tag: '999', discordId: '303957248420347905' },
 ];
 
 const TIER_BASE: Record<string, number> = {
@@ -22,9 +22,9 @@ const TIER_BASE: Record<string, number> = {
 const DIV_BASE: Record<string, number> = { IV: 0, III: 100, II: 200, I: 300 };
 
 const playerStorage: Record<string, any> = {};
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function fetchPlayerData(player: { name: string; tag: string }) {
+async function fetchPlayerData(player: { name: string; tag: string; discordId?: string }) {
   const fullRiotId = `${player.name}#${player.tag}`;
   const headers = { 'X-Riot-Token': RIOT_API_KEY };
 
@@ -79,7 +79,7 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
           assists: p.assists,
           cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
           duration: `${durMin}m ${durSec}s`,
-          timestamp
+          timestamp,
         };
       })
     );
@@ -88,7 +88,7 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
     const validMatches = (recentMatchesRaw.filter(Boolean) as any[])
       .sort((a, b) => b.timestamp - a.timestamp);
 
-    // 6. Top 3 Campeones más jugados (en base a las 10 partidas)
+    // 6. Top 3 Campeones más jugados
     const champStats: Record<string, { games: number; wins: number; losses: number; kills: number; deaths: number; assists: number }> = {};
 
     validMatches.forEach((m) => {
@@ -110,7 +110,7 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
         wins: stats.wins,
         losses: stats.losses,
         winrate: Math.round((stats.wins / stats.games) * 100),
-        kda: ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
+        kda: ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2),
       }))
       .sort((a, b) => b.games - a.games || b.winrate - a.winrate)
       .slice(0, 3);
@@ -134,6 +134,7 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
       riotId: `${account.gameName}#${account.tagLine}`,
       gameName: account.gameName,
       tagLine: account.tagLine,
+      discordId: player.discordId, // 👈 Se envía al frontend
       tier,
       rank,
       lp,
@@ -144,7 +145,7 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
       profileIconId: summoner.profileIconId || 29,
       inGame,
       topPlayedChampions: topPlayedChampions.length > 0 ? topPlayedChampions : (playerStorage[fullRiotId]?.topPlayedChampions || []),
-      recentMatches: validMatches.length > 0 ? validMatches : (playerStorage[fullRiotId]?.recentMatches || [])
+      recentMatches: validMatches.length > 0 ? validMatches : (playerStorage[fullRiotId]?.recentMatches || []),
     };
 
     playerStorage[fullRiotId] = updatedData;
@@ -154,11 +155,12 @@ async function fetchPlayerData(player: { name: string; tag: string }) {
   }
 }
 
-function getDefaultPlayer(player: { name: string; tag: string }) {
+function getDefaultPlayer(player: { name: string; tag: string; discordId?: string }) {
   return {
     riotId: `${player.name}#${player.tag}`,
     gameName: player.name,
     tagLine: player.tag,
+    discordId: player.discordId, // 👈 Se envía en caso de fallback
     tier: 'UNRANKED',
     rank: '',
     lp: 0,
@@ -169,7 +171,7 @@ function getDefaultPlayer(player: { name: string; tag: string }) {
     profileIconId: 29,
     inGame: false,
     topPlayedChampions: [],
-    recentMatches: []
+    recentMatches: [],
   };
 }
 
@@ -191,7 +193,7 @@ export async function GET() {
 
   lastFetchTime = now;
 
-  const finalRanking = PLAYERS.map(p => playerStorage[`${p.name}#${p.tag}`] || getDefaultPlayer(p))
+  const finalRanking = PLAYERS.map((p) => playerStorage[`${p.name}#${p.tag}`] || getDefaultPlayer(p))
     .sort((a, b) => b.score - a.score);
 
   return NextResponse.json(finalRanking);
