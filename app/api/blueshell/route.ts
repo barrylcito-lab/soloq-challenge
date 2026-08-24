@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { attacker, victim, penalty } = body;
+    const { attacker, victim, penalty, extraConfig } = body;
 
     if (!attacker || !victim || !penalty) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
@@ -32,18 +32,19 @@ export async function POST(req: Request) {
     usedShells[attackerKey] = (usedShells[attackerKey] || 0) + 1;
     await redis.set("used_shells", usedShells);
 
-    // 2. Guardar penitencia activa en la víctima
+    // 2. Guardar penitencia activa en la víctima (incluyendo el detalle extra si existe)
     const activePenalties: Record<string, any> = (await redis.get("active_penalties")) || {};
     activePenalties[victimKey] = {
       attacker: attackerKey,
       penalty,
+      extraConfig: extraConfig || null,
       appliedAt: new Date().toISOString(),
       active: true,
     };
     await redis.set("active_penalties", activePenalties);
 
-    // 3. Notificar por Discord Webhook
-    await sendBlueShellAlert({ attacker, victim, penalty });
+    // 3. Notificar por Discord Webhook (le pasamos el extraConfig para que lo imprima el bot)
+    await sendBlueShellAlert({ attacker, victim, penalty, extraConfig });
 
     return NextResponse.json({ success: true, message: "Blue shell ejecutada" });
   } catch (error) {

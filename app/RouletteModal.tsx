@@ -166,7 +166,9 @@ export default function RouletteModal({
     onClose();
   };
 
-  const needsInput = selectedPenalty && [1, 2, 3, 15].includes(selectedPenalty.id);
+  // Declaramos penaltyId aquí para que no falle nunca
+  const penaltyId = selectedPenalty ? Number(selectedPenalty.id) : null;
+  const needsInput = penaltyId !== null && [1, 2, 3, 15].includes(penaltyId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
@@ -259,13 +261,13 @@ export default function RouletteModal({
               {needsInput && (
                 <div className="flex flex-col gap-1 text-left bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
                   <label className="text-xs font-bold text-amber-300">
-                    {selectedPenalty.id === 1 && "Escribe el campeón que le vas a prohibir/imponer:"}
-                    {selectedPenalty.id === 2 && "Selecciona los hechizos obligatorios:"}
-                    {selectedPenalty.id === 3 && "Escribe el ítem troll (para el 2do objeto):"}
-                    {selectedPenalty.id === 15 && "Escribe los campeones o skins de la lista:"}
+                    {penaltyId === 1 && "Escribe el campeón que le vas a imponer:"}
+                    {penaltyId === 2 && "Selecciona los hechizos obligatorios:"}
+                    {penaltyId === 3 && "Escribe cuál será el 2do ítem T R O L L:"}
+                    {penaltyId === 15 && "Escribe la serie de skins / campeones a escoger:"}
                   </label>
 
-                  {selectedPenalty.id === 2 ? (
+                  {penaltyId === 2 ? (
                     <select
                       className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs"
                       onChange={(e) => setCustomValue(e.target.value)}
@@ -274,14 +276,14 @@ export default function RouletteModal({
                       <option value="ghost_heal">Fantasma + Curar</option>
                       <option value="exhaust_ignite">Extenuación + Prender</option>
                       <option value="cleanse_tp">Limpiar + Teleport</option>
-                      <option value="smite_flash">Smite + Flash (fuera de jungla)</option>
+                      <option value="smite_flash">Smite + Flash</option>
                     </select>
                   ) : (
                     <input
                       type="text"
                       placeholder={
-                        selectedPenalty.id === 1 ? "Ej: Teemo, Yuumi..." :
-                        selectedPenalty.id === 3 ? "Ej: Placa del Hombre Muerto..." :
+                        penaltyId === 1 ? "Ej: Yuumi, Singed..." :
+                        penaltyId === 3 ? "Ej: Sombrero de Rabadon de 2do item..." :
                         "Escribe las opciones aquí..."
                       }
                       className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"

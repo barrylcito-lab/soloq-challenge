@@ -15,7 +15,6 @@ export default function Leaderboard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
-  // Estados para el modal y la animación del proyectil
   const [isRouletteOpen, setIsRouletteOpen] = useState(false);
   const [attackerPlayer, setAttackerPlayer] = useState<any>(null);
   const [victimPlayer, setVictimPlayer] = useState<any>(null);
@@ -66,7 +65,6 @@ export default function Leaderboard() {
     setExpandedPlayer((prev) => (prev === riotId ? null : riotId));
   };
 
-  // MODO TEST: 1 concha garantizada
   const getAvailableShells = (player: any) => {
     if (!player) return 0;
     const earned = 1;
@@ -95,22 +93,35 @@ export default function Leaderboard() {
     setAttackerPlayer(me);
     setVictimPlayer(targetVictim);
     
-    // Activar animación de vuelo de la concha por la pantalla
     setIsFlyingShell(true);
     setTimeout(() => {
       setIsFlyingShell(false);
       setIsRouletteOpen(true);
-    }, 1200); // 1.2 segundos de trayecto animado
+    }, 1200);
   };
 
   const top1 = players[0];
   const top2 = players[1];
   const top3 = players[2];
 
+  const getOpGgUrl = (riotId: string) => {
+    if (!riotId) return 'https://las.op.gg';
+    const parts = riotId.split('#');
+    const name = encodeURIComponent(parts[0] || '');
+    const tag = encodeURIComponent(parts[1] || 'LAS');
+    return `https://www.op.gg/summoners/las/${name}-${tag}`;
+  };
+
+  const formatChampionName = (name: any) => {
+    if (!name || typeof name !== 'string') return 'Aatrox';
+    let cleaned = name.replace(/['\s.]/g, '');
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
+
   return (
     <main className="min-h-screen text-slate-100 p-4 sm:p-6 md:p-10 font-sans relative overflow-x-hidden selection:bg-blue-500 selection:text-white bg-[#030712]">
       
-      {/* ===== ANIMACIÓN DE PROYECTIL BLUE SHELL CRUZANDO LA PANTALLA ===== */}
+      {/* ANIMACIÓN DE PROYECTIL BLUE SHELL */}
       {isFlyingShell && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-center overflow-hidden">
           <div className="absolute animate-shellFly text-5xl filter drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]">
@@ -119,7 +130,6 @@ export default function Leaderboard() {
         </div>
       )}
       
-      {/* Estilo CSS inyectado para la animación de vuelo rápida */}
       <style jsx global>{`
         @keyframes shellFly {
           0% { transform: translateX(-10vw) translateY(20vh) scale(0.5) rotate(-30deg); opacity: 0; }
@@ -132,27 +142,22 @@ export default function Leaderboard() {
         }
       `}</style>
 
-      {/* ===== FONDO WILLEM DAFOE NÍTIDO ===== */}
+      {/* FONDO WILLEM DAFOE NÍTIDO */}
       <div 
         className="fixed inset-0 z-0 pointer-events-none bg-cover bg-top bg-no-repeat opacity-50 transition-opacity duration-700"
         style={{ backgroundImage: `url('/willem.png'), url('/willem.jpg')` }}
       />
       
-      {/* Capa de degradado con desenfoque suave */}
       <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-[#030712]/40 via-[#030712]/60 to-[#030712]/90 backdrop-blur-[0.5px]" />
-
-      {/* Luces de ambiente */}
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none z-0 animate-pulse duration-1000" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/15 rounded-full blur-[120px] pointer-events-none z-0 animate-pulse duration-1000" />
 
       <div className="max-w-6xl mx-auto space-y-8 relative z-10">
         
-        {/* Cabecera Principal */}
+        {/* CABECERA PRINCIPAL */}
         <header className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#0a0f1d]/85 backdrop-blur-xl p-6 rounded-3xl border border-slate-700/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] gap-4 transition-all duration-300 hover:border-slate-500">
           <div className="flex items-center gap-4">
-            
             <Logo className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 transition-transform duration-300 hover:scale-105" />
-
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">
@@ -206,7 +211,6 @@ export default function Leaderboard() {
               </button>
             )}
 
-            {/* Botón Refrescar */}
             <button 
               onClick={() => loadData(true)} 
               disabled={refreshing}
@@ -230,7 +234,6 @@ export default function Leaderboard() {
           </div>
         </header>
 
-        {/* ALERTA DE ERROR */}
         {errorMsg && (
           <div className="p-4 rounded-2xl bg-rose-950/90 border border-rose-500/50 text-rose-200 text-xs sm:text-sm flex items-center justify-between gap-3 shadow-lg">
             <span>⚠️ {errorMsg}</span>
@@ -252,8 +255,6 @@ export default function Leaderboard() {
             {/* PODIO TOP 3 */}
             {players.length >= 3 && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-4 pb-2">
-                
-                {/* 2DO LUGAR */}
                 <div 
                   onClick={() => toggleExpand(top2.riotId)}
                   className="order-2 md:order-1 bg-[#0a0f1d]/85 backdrop-blur-md border border-slate-700/85 hover:border-slate-300 rounded-3xl p-6 text-center relative shadow-2xl cursor-pointer hover:-translate-y-2.5 transition-all duration-300 group"
@@ -279,7 +280,6 @@ export default function Leaderboard() {
                   </div>
                 </div>
 
-                {/* 1ER LUGAR */}
                 <div 
                   onClick={() => toggleExpand(top1.riotId)}
                   className="order-1 md:order-2 bg-[#0a0f1d]/90 backdrop-blur-md border-2 border-amber-500/80 hover:border-amber-400 rounded-3xl p-7 text-center relative shadow-[0_0_40px_rgba(251,191,36,0.2)] md:-translate-y-4 cursor-pointer hover:-translate-y-7 transition-all duration-300 group"
@@ -305,7 +305,6 @@ export default function Leaderboard() {
                   </div>
                 </div>
 
-                {/* 3ER LUGAR */}
                 <div 
                   onClick={() => toggleExpand(top3.riotId)}
                   className="order-3 bg-[#0a0f1d]/85 backdrop-blur-md border border-amber-900/80 hover:border-amber-700 rounded-3xl p-6 text-center relative shadow-2xl cursor-pointer hover:-translate-y-2.5 transition-all duration-300 group"
@@ -330,14 +329,11 @@ export default function Leaderboard() {
                     WR: <span className="text-white font-bold">{top3.winrate}%</span> ({top3.wins}V - {top3.losses}D)
                   </div>
                 </div>
-
               </div>
             )}
 
-            {/* TABLA PRINCIPAL REDISEÑADA */}
+            {/* TABLA PRINCIPAL */}
             <div className="rounded-3xl border border-slate-700/80 bg-[#0a0f1d]/90 backdrop-blur-xl shadow-2xl shadow-black/90 p-4 sm:p-6 space-y-3">
-              
-              {/* Cabecera de la tabla */}
               <div className="grid grid-cols-9 text-[11px] font-black text-slate-400 uppercase tracking-wider px-4 py-2 border-b border-slate-800/80">
                 <div className="text-center">Pos</div>
                 <div className="col-span-2">Jugador</div>
@@ -349,7 +345,6 @@ export default function Leaderboard() {
                 <div className="text-center">Acción</div>
               </div>
 
-              {/* Lista de filas convertidas en tarjetas individuales */}
               <div className="space-y-2.5">
                 {players.map((p, idx) => {
                   const pos = idx + 1;
@@ -357,6 +352,49 @@ export default function Leaderboard() {
                   const activePen = penalties[p.riotId];
                   const playerEarnedShells = getAvailableShells(p);
                   const isMyself = me?.riotId === p.riotId;
+
+                  // 1. Obtener exactamente las últimas 10 partidas
+                  const rawMatches = Array.isArray(p.recentMatches) ? p.recentMatches.slice(0, 10) : [];
+
+                  // 2. Organizar en orden numérico para que fluyan de izquierda a derecha (columna izq: 1-5, columna der: 6-10)
+                  const leftCol = rawMatches.slice(0, 5);
+                  const rightCol = rawMatches.slice(5, 10);
+                  const orderedMatches: any[] = [];
+                  for (let i = 0; i < 5; i++) {
+                    if (leftCol[i]) orderedMatches.push(leftCol[i]);
+                    if (rightCol[i]) orderedMatches.push(rightCol[i]);
+                  }
+
+                  // 3. Calcular campeones más jugados dinámicamente de esas 10 partidas
+                  const champCounts: Record<string, { wins: number; losses: number; kills: number; deaths: number; assists: number; games: number }> = {};
+                  rawMatches.forEach((m: any) => {
+                    const cName = m.championName || m.champion || m.champName || 'Desconocido';
+                    if (!champCounts[cName]) {
+                      champCounts[cName] = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0, games: 0 };
+                    }
+                    champCounts[cName].games += 1;
+                    if (m.win) champCounts[cName].wins += 1;
+                    else champCounts[cName].losses += 1;
+                    champCounts[cName].kills += (m.kills || 0);
+                    champCounts[cName].deaths += (m.deaths || 0);
+                    champCounts[cName].assists += (m.assists || 0);
+                  });
+
+                  const computedTopChamps = Object.keys(champCounts)
+                    .map((name) => ({
+                      championName: name,
+                      games: champCounts[name].games,
+                      wins: champCounts[name].wins,
+                      losses: champCounts[name].losses,
+                      winrate: Math.round((champCounts[name].wins / champCounts[name].games) * 100),
+                      kda: ((champCounts[name].kills + champCounts[name].assists) / Math.max(1, champCounts[name].deaths)).toFixed(2),
+                    }))
+                    .sort((a, b) => b.games - a.games)
+                    .slice(0, 3);
+
+                  const displayTopChamps = (p.topPlayedChampions && p.topPlayedChampions.length > 0) 
+                    ? p.topPlayedChampions 
+                    : computedTopChamps;
 
                   return (
                     <React.Fragment key={p.riotId}>
@@ -370,7 +408,6 @@ export default function Leaderboard() {
                             : 'bg-[#050811]/70 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-500'
                         } ${isMyself ? 'border-l-4 border-l-blue-500 bg-blue-950/30' : ''}`}
                       >
-                        {/* Posición */}
                         <div className="text-center font-black">
                           {pos === 1 && <span className="text-xl">👑 1</span>}
                           {pos === 2 && <span className="text-lg text-slate-300">🥈 2</span>}
@@ -378,7 +415,6 @@ export default function Leaderboard() {
                           {pos > 3 && <span className="text-slate-400 font-mono text-sm">#{pos}</span>}
                         </div>
 
-                        {/* Jugador con Avatar */}
                         <div className="col-span-2 font-bold text-white flex items-center gap-3">
                           <img 
                             src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${p.profileIconId}.png`} 
@@ -392,7 +428,6 @@ export default function Leaderboard() {
                           </div>
                         </div>
 
-                        {/* Estado En Vivo */}
                         <div>
                           {p.inGame ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
@@ -407,19 +442,16 @@ export default function Leaderboard() {
                           )}
                         </div>
 
-                        {/* Rango & LP */}
                         <div>
                           <div className="font-black text-slate-100 text-xs uppercase">{p.tier} {p.rank}</div>
                           <div className="text-xs font-mono font-black text-amber-400 mt-0.5">{p.lp} LP</div>
                         </div>
 
-                        {/* Winrate */}
                         <div className="text-center">
                           <div className="font-black text-white">{p.winrate}%</div>
                           <div className="text-[10px] text-slate-400">({p.wins}V - {p.losses}D)</div>
                         </div>
 
-                        {/* Inventario de Blue Shells */}
                         <div className="text-center">
                           {playerEarnedShells > 0 ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-blue-500/20 text-blue-300 border border-blue-400/40 shadow-sm animate-pulse">
@@ -430,7 +462,6 @@ export default function Leaderboard() {
                           )}
                         </div>
 
-                        {/* Cuadro de Castigos / Penitencia Activa */}
                         <div className="text-center flex items-center justify-center">
                           {activePen ? (
                             <div className="relative group/pen inline-block" onClick={(e) => e.stopPropagation()}>
@@ -440,8 +471,6 @@ export default function Leaderboard() {
                                   <strong className="text-blue-400 font-bold">#{activePen.penalty.id}:</strong> {activePen.penalty.text}
                                 </span>
                               </div>
-
-                              {/* Tooltip flotante */}
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/pen:flex flex-col w-64 p-3 bg-[#050811] border border-blue-500/40 rounded-xl shadow-2xl z-50 pointer-events-none text-left">
                                 <div className="flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
                                   <span className="text-[10px] font-black uppercase tracking-wider text-blue-400">
@@ -455,6 +484,9 @@ export default function Leaderboard() {
                                 </div>
                                 <p className="text-xs text-white font-semibold leading-relaxed">
                                   "{activePen.penalty.text}"
+                                  {activePen.extraConfig && (
+                                    <span className="block mt-1 text-amber-300 font-bold">Detalle: {activePen.extraConfig}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -465,21 +497,11 @@ export default function Leaderboard() {
                           )}
                         </div>
 
-                        {/* Botón Lanzar */}
                         <div className="text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             disabled={!session || !me || myShells <= 0 || isMyself || isFlyingShell}
                             onClick={() => handleLaunchBlueShell(p)}
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-20 disabled:hover:bg-blue-600 text-white rounded-xl text-xs font-black transition-all shadow-md active:scale-95 flex items-center gap-1 mx-auto uppercase tracking-wider hover:shadow-blue-500/30"
-                            title={
-                              !session 
-                                ? "Inicia sesión con Discord para atacar" 
-                                : isMyself 
-                                ? "No puedes atacarte a ti mismo" 
-                                : myShells <= 0 
-                                ? "No tienes Blue Shells disponibles" 
-                                : `Tirar Blue Shell a ${p.riotId}`
-                            }
                           >
                             <span>🐚</span>
                             <span>Tirar</span>
@@ -487,38 +509,117 @@ export default function Leaderboard() {
                         </div>
                       </div>
 
-                      {/* PANEL EXPANDIBLE DE CAMPEONES */}
+                      {/* PANEL EXPANDIBLE ORDENADO */}
                       {isExpanded && (
-                        <div className="bg-[#050811] border border-slate-800 p-5 rounded-2xl mx-2 shadow-inner my-1 transition-all duration-300">
-                          <div className="text-xs font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                            <span>⚡ Top 3 Campeones Más Jugados en SoloQ</span>
-                            <span className="text-[11px] text-slate-400 font-normal lowercase">(partidas recientes)</span>
+                        <div className="bg-[#050811] border border-slate-800 p-6 rounded-2xl mx-2 shadow-inner my-1 space-y-6 transition-all duration-300">
+                          
+                          {/* Enlace a OP.GG */}
+                          <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Acceso Externo</span>
+                            <a 
+                              href={getOpGgUrl(p.riotId)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-1.5"
+                            >
+                              <span>🌐</span> Ver perfil completo en OP.GG
+                            </a>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {p.topPlayedChampions && p.topPlayedChampions.length > 0 ? (
-                              p.topPlayedChampions.map((champ: any, cIdx: number) => (
-                                <div key={cIdx} className="flex items-center gap-3 bg-[#0a0f1d] p-3.5 rounded-xl border border-slate-800 transition-transform duration-200 hover:scale-[1.02]">
-                                  <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${champ.championName}.png`}
-                                    alt={champ.championName}
-                                    className="w-12 h-12 rounded-xl border border-slate-700 shadow shrink-0"
-                                    onError={(e: any) => { e.target.src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg'; }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-extrabold text-white text-sm truncate">{champ.championName}</div>
-                                    <div className="text-xs text-slate-300 font-medium mt-0.5">
-                                      <span className="text-amber-400 font-bold">{champ.games}</span> {champ.games === 1 ? 'partida' : 'partidas'} ({champ.wins}V - {champ.losses}D)
+
+                          {/* Top 3 Campeones */}
+                          <div>
+                            <div className="text-xs font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                              <span>⚡ Top 3 Campeones Más Jugados (De sus últimas 10 partidas)</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {displayTopChamps && displayTopChamps.length > 0 ? (
+                                displayTopChamps.map((champ: any, cIdx: number) => {
+                                  const formattedName = formatChampionName(champ.championName);
+                                  return (
+                                    <div key={cIdx} className="flex items-center gap-3 bg-[#0a0f1d] p-3.5 rounded-xl border border-slate-800 transition-transform duration-200 hover:scale-[1.02]">
+                                      <img 
+                                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${formattedName}.png`}
+                                        alt={champ.championName}
+                                        className="w-12 h-12 rounded-xl border border-slate-700 shadow shrink-0 object-cover"
+                                        onError={(e: any) => { e.target.src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg'; }}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-extrabold text-white text-sm truncate">{champ.championName}</div>
+                                        <div className="text-xs text-slate-300 font-medium mt-0.5">
+                                          <span className="text-amber-400 font-bold">{champ.games}</span> part. ({champ.wins}V - {champ.losses}D)
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                          WR: <span className={champ.winrate >= 50 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{champ.winrate}%</span> • {champ.kda} KDA
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                                      WR: <span className={champ.winrate >= 50 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{champ.winrate}%</span> • {champ.kda} KDA
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="text-xs text-slate-500 font-medium">Sin datos de partidas recientes.</div>
-                            )}
+                                  );
+                                })
+                              ) : (
+                                <div className="text-xs text-slate-500 font-medium">Sin datos de campeones recientes.</div>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Historial de las 10 Partidas en orden natural izquierda -> derecha (1 al 5 izq, 6 al 10 der) */}
+                          <div>
+                            <div className="text-xs font-black text-blue-400 uppercase tracking-widest mb-3">
+                              📜 Historial Reciente de SoloQ ({rawMatches.length} Partidas)
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {orderedMatches.length > 0 ? (
+                                orderedMatches.map((match: any, mIdx: number) => {
+                                  const isWin = match.win;
+                                  const rawChampName = match.championName || match.champion || match.champName || 'Aatrox';
+                                  const formattedChamp = formatChampionName(rawChampName);
+                                  const champImg = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${formattedChamp}.png`;
+
+                                  return (
+                                    <div 
+                                      key={mIdx} 
+                                      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                                        isWin 
+                                          ? 'bg-emerald-950/20 border-emerald-500/40 shadow-lg shadow-emerald-500/5' 
+                                          : 'bg-rose-950/20 border-rose-500/40 shadow-lg shadow-rose-500/5'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="relative shrink-0">
+                                          <img 
+                                            src={champImg} 
+                                            alt={rawChampName} 
+                                            className="w-11 h-11 rounded-xl border border-slate-700 object-cover shadow"
+                                            onError={(e: any) => { e.target.src = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg'; }}
+                                          />
+                                          <span className={`absolute -bottom-1 -right-1 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center text-slate-950 uppercase ${
+                                            isWin ? 'bg-emerald-400' : 'bg-rose-500 text-white'
+                                          }`}>
+                                            {isWin ? 'V' : 'D'}
+                                          </span>
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-extrabold text-white text-xs truncate">{rawChampName}</span>
+                                          <span className="text-[10px] text-slate-400 font-mono">{match.gameDuration || '30m'}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-col items-end text-right shrink-0">
+                                        <div className="text-xs font-black text-slate-200 font-mono">
+                                          {match.kills} / <span className="text-rose-400">{match.deaths}</span> / {match.assists}
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                          <span className="text-amber-400 font-bold">{match.kda ? `${match.kda} KDA` : ''}</span> • {match.cs !== undefined ? `${match.cs} CS` : ''}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-xs text-slate-500 font-medium italic col-span-2">No hay registros detallados de partidas recientes en la API.</div>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
                       )}
                     </React.Fragment>
@@ -529,7 +630,6 @@ export default function Leaderboard() {
           </>
         )}
 
-        {/* MODAL RULETA */}
         {victimPlayer && (
           <RouletteModal
             isOpen={isRouletteOpen}

@@ -4,16 +4,27 @@ export interface Penalty {
 }
 
 export const PENALTIES: Penalty[] = [
-  { id: 1, text: "Jugar una partida con un campeón que nunca hayas usado este split" },
-  { id: 2, text: "No puedes comprar botas durante toda la partida" },
-  { id: 3, text: "Jugar la partida con Flash en la otra tecla (si usas D, ponlo en F)" },
-  { id: 4, text: "Primer ítem completado debe ser un ítem troll/off-meta para tu campeón" },
-  { id: 5, text: "Jugar con la cámara bloqueada toda la partida" },
-  { id: 6, text: "No puedes tirar surrender bajo ninguna circunstancia" },
-  { id: 7, text: "Tener que escribir 'GG IZI' en el chat de equipo cada vez que mueras" },
-  { id: 8, text: "Jugar soporte con un campeón tradicionalmente de Top/Mid" },
-  { id: 9, text: "Pickear campeón a ciegas (cerrar los ojos y hacer 3 clicks aleatorios)" },
-  { id: 10, text: "No puedes usar tu Ultimate durante los primeros 15 minutos" },
+  { id: 1, text: "El atacante puede escoger el campeón" },
+  { id: 2, text: "El atacante puede escoger los hechizos del culiao" },
+  { id: 3, text: "El culiao debe armarse de 2do item una wea T R O L L (La cual será revisada) (20min. mínimo o no)" },
+  { id: 4, text: "Cambia los hechizos de lugar al culiao" },
+  { id: 5, text: "Jugar con la sensibilidad del ratón máxima" },
+  { id: 6, text: "Limitar los fps a 30" },
+  { id: 7, text: "Duo con el faker/Isabel" },
+  { id: 8, text: "No comprar item (finalizado) hasta minuto 15" },
+  { id: 9, text: "No comprar botas" },
+  { id: 10, text: "No poder farmear el cannon hasta minuto 10" },
+  { id: 11, text: "No colocar wards hasta minuto 15" },
+  { id: 12, text: "Jugar sin audio, PERO, con titanio de omega con volumen al 100 (en loop)" },
+  { id: 13, text: "A las 5 muertes, el culiao deberá vender un item (a elección del culiao) el cual no podrá volver a comprar" },
+  { id: 14, text: "Auto Fill (No es valido si sale en su linea)" },
+  { id: 15, text: "El atacante escoge una serie de skins, de la cual, el culiao tiene que escoger campeón" },
+  { id: 16, text: "No poder hacer señales" },
+  { id: 17, text: "Comprar 2 pinks por cada back. Puedes volver caminando y se anula (si ya tienes se venden y se compran de nuevo)" },
+  { id: 18, text: "No puedes jugar tus 3 campeones más jugados" },
+  { id: 19, text: "No puedes backear hasta el minuto 15" },
+  { id: 20, text: "No puedes pegarle a inhibidores o nexo enemigo" },
+  { id: 21, text: "Reverse y el culiao tiene un escudo de 2 dias para blueshells" },
 ];
 
 // Comprueba cuántas Blue Shells ha ganado por mérito según su historial
