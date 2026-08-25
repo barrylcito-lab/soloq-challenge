@@ -65,10 +65,28 @@ export default function Leaderboard() {
     setExpandedPlayer((prev) => (prev === riotId ? null : riotId));
   };
 
-  // MODO TEST: 10 conchas garantizadas para pruebas
+  // MODO REAL: Cálculo de Blue Shells ganadas por rachas (empiezan en 0)
   const getAvailableShells = (player: any) => {
     if (!player) return 0;
-    const earned = 10;
+    
+    let earned = 0;
+    
+    // Sumar 1 Blue Shell por cada 4 victorias consecutivas
+    if (player.recentMatches && Array.isArray(player.recentMatches)) {
+      let currentStreak = 0;
+      for (const match of player.recentMatches) {
+        if (match.win) {
+          currentStreak++;
+          if (currentStreak === 4) {
+            earned += 1;
+            currentStreak = 0; // Se reinicia para que busque otra racha de 4
+          }
+        } else {
+          currentStreak = 0;
+        }
+      }
+    }
+    
     const used = usedShells[player.riotId] || 0;
     return Math.max(0, earned - used);
   };

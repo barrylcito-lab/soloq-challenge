@@ -30,7 +30,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
   const redisKey = `player_cache:${fullRiotId}`;
   const headers = { 'X-Riot-Token': RIOT_API_KEY };
 
-  const cachedData = await redis.get(redisKey);
+  const cachedData = (await redis.get(redisKey)) as any;
 
   try {
     // 1. PUUID
@@ -85,6 +85,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
           deaths: p.deaths,
           assists: p.assists,
           cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
+          pentaKills: p.pentaKills || 0, // 👈 AQUÍ ESTÁ AGREGADO EL PENTAKILL
           gameDuration: `${durMin}m ${durSec}s`,
           timestamp,
         };
@@ -202,7 +203,7 @@ export async function GET() {
     return NextResponse.json(cachedList);
   }
 
-const results = [];
+  const results = [];
   let index = 0;
   for (const p of PLAYERS) {
     const data = await fetchPlayerData(p);
