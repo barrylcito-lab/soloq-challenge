@@ -354,16 +354,20 @@ export default function Leaderboard() {
                   const playerEarnedShells = getAvailableShells(p);
                   const isMyself = me?.riotId === p.riotId;
 
-                  const rawMatches = Array.isArray(p.recentMatches) ? p.recentMatches.slice(0, 10) : [];
+                  // 1. Tomar las últimas 15 partidas
+                  const rawMatches = Array.isArray(p.recentMatches) ? p.recentMatches.slice(0, 15) : [];
 
-                  const leftCol = rawMatches.slice(0, 5);
-                  const rightCol = rawMatches.slice(5, 10);
+                  // 2. Organizar de forma secuencial de izquierda a derecha en 2 columnas (mitad y mitad)
+                  const half = Math.ceil(rawMatches.length / 2);
+                  const leftCol = rawMatches.slice(0, half);
+                  const rightCol = rawMatches.slice(half);
                   const orderedMatches: any[] = [];
-                  for (let i = 0; i < 5; i++) {
+                  for (let i = 0; i < half; i++) {
                     if (leftCol[i]) orderedMatches.push(leftCol[i]);
                     if (rightCol[i]) orderedMatches.push(rightCol[i]);
                   }
 
+                  // 3. Calcular campeones más jugados de esas 15 partidas
                   const champCounts: Record<string, { wins: number; losses: number; kills: number; deaths: number; assists: number; games: number }> = {};
                   rawMatches.forEach((m: any) => {
                     const cName = m.championName || m.champion || m.champName || 'Desconocido';
@@ -507,7 +511,7 @@ export default function Leaderboard() {
                         </div>
                       </div>
 
-                      {/* PANEL EXPANDIBLE ORDENADO */}
+                      {/* PANEL EXPANDIBLE ORDENADO CON LAS 15 PARTIDAS */}
                       {isExpanded && (
                         <div className="bg-[#050811] border border-slate-800 p-6 rounded-2xl mx-2 shadow-inner my-1 space-y-6 transition-all duration-300">
                           
@@ -527,7 +531,7 @@ export default function Leaderboard() {
                           {/* Top 3 Campeones */}
                           <div>
                             <div className="text-xs font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                              <span>⚡ Top 3 Campeones Más Jugados (De sus últimas 10 partidas)</span>
+                              <span>⚡ Top 3 Campeones Más Jugados (De sus últimas 15 partidas)</span>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               {displayTopChamps && displayTopChamps.length > 0 ? (
@@ -559,7 +563,7 @@ export default function Leaderboard() {
                             </div>
                           </div>
 
-                          {/* Historial de las 10 Partidas */}
+                          {/* Historial de las 15 Partidas */}
                           <div>
                             <div className="text-xs font-black text-blue-400 uppercase tracking-widest mb-3">
                               📜 Historial Reciente de SoloQ ({rawMatches.length} Partidas)
