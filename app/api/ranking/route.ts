@@ -29,7 +29,6 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
   const redisKey = `player_cache:${fullRiotId}`;
   const headers = { 'X-Riot-Token': RIOT_API_KEY };
 
-  // Intentar rescatar un respaldo previo de Redis por si la API falla
   const cachedData = await redis.get(redisKey);
 
   try {
@@ -62,7 +61,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
     const specRes = await fetch(`https://${PLATFORM}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${puuid}`, { headers, cache: 'no-store' });
     const inGame = specRes.status === 200;
 
-    // 5. Historial SoloQ (15 partidas como pediste)
+    // 5. Historial SoloQ (15 partidas)
     const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=15`, { headers, cache: 'no-store' });
     const matchIds: string[] = matchIdsRes.ok ? await matchIdsRes.json() : [];
 
@@ -136,7 +135,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
         ? (TIER_BASE[tier] || 0) + lp
         : (TIER_BASE[tier] || 0) + (DIV_BASE[rank] || 0) + lp;
     } else if (cachedData?.score) {
-      score = cachedData.score; // Mantener puntaje anterior si falla la liga momentáneamente
+      score = cachedData.score;
     }
 
     const updatedData = {
@@ -157,11 +156,9 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
       recentMatches: validMatches.length > 0 ? validMatches : (cachedData?.recentMatches || []),
     };
 
-    // Guardar en Redis permanentemente o hasta la próxima actualización exitosa
     await redis.set(redisKey, updatedData);
     return updatedData;
   } catch (err) {
-    // Si Riot bota la petición (Rate Limit / Error 429 / 503), devolvemos el caché de Redis anterior
     if (cachedData) return cachedData;
     return getDefaultPlayer(player);
   }
@@ -188,12 +185,15 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 }
 
 let lastFetchTime = 0;
-const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minuto de respiro a la API de Riot
+const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutos de caché
 
 export async function GET() {
+  // 🧹 Limpiar caché corrupto a la fuerza esta vez
+  await redis.del('global_ranking_cache');
+  await redis.del('global_ranking_time');
+
   const now = Date.now();
 
-  // Intentar cargar la lista desde Redis directamente si se consultó hace menos de 1 minuto
   const cachedList = await redis.get('global_ranking_cache');
   const lastFetch = await redis.get('global_ranking_time');
 
@@ -205,12 +205,11 @@ export async function GET() {
   for (const p of PLAYERS) {
     const data = await fetchPlayerData(p);
     results.push(data);
-    await delay(100); // Pausa prudente para evitar baneo por rate limit de Riot
+    await delay(100);
   }
 
   const finalRanking = results.sort((a, b) => b.score - a.score);
 
-  // Guardar caché global en Redis
   await redis.set('global_ranking_cache', finalRanking);
   await redis.set('global_ranking_time', now);
 
