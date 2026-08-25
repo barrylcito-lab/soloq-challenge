@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis'; // 👈 Usamos tu cliente de Redis existente
 
 const RIOT_API_KEY = 'RGAPI-4233422f-76fa-4b31-98ae-a51d39c4db13';
 const REGION = 'americas';
@@ -21,18 +22,24 @@ const TIER_BASE: Record<string, number> = {
 };
 const DIV_BASE: Record<string, number> = { IV: 0, III: 100, II: 200, I: 300 };
 
-const playerStorage: Record<string, any> = {};
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchPlayerData(player: { name: string; tag: string; discordId?: string }) {
   const fullRiotId = `${player.name}#${player.tag}`;
+  const redisKey = `player_cache:${fullRiotId}`;
   const headers = { 'X-Riot-Token': RIOT_API_KEY };
+
+  // Intentar rescatar un respaldo previo de Redis por si la API falla
+  const cachedData = await redis.get(redisKey);
 
   try {
     // 1. PUUID
     const accUrl = `https://${REGION}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(player.name.trim())}/${encodeURIComponent(player.tag.trim())}`;
     const accRes = await fetch(accUrl, { headers, cache: 'no-store' });
-    if (!accRes.ok) return playerStorage[fullRiotId] || getDefaultPlayer(player);
+    if (!accRes.ok) {
+      if (cachedData) return cachedData;
+      return getDefaultPlayer(player);
+    }
     const account = await accRes.json();
     const puuid = account.puuid;
 
@@ -55,8 +62,8 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
     const specRes = await fetch(`https://${PLATFORM}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${puuid}`, { headers, cache: 'no-store' });
     const inGame = specRes.status === 200;
 
-    // 5. Historial SoloQ (10 partidas)
-    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=10`, { headers, cache: 'no-store' });
+    // 5. Historial SoloQ (15 partidas como pediste)
+    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=15`, { headers, cache: 'no-store' });
     const matchIds: string[] = matchIdsRes.ok ? await matchIdsRes.json() : [];
 
     const recentMatchesRaw = await Promise.all(
@@ -73,18 +80,17 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
 
         return {
           win: p.win,
-          champion: p.championName,
+          championName: p.championName,
           kills: p.kills,
           deaths: p.deaths,
           assists: p.assists,
           cs: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
-          duration: `${durMin}m ${durSec}s`,
+          gameDuration: `${durMin}m ${durSec}s`,
           timestamp,
         };
       })
     );
 
-    // Orden cronológico: Más reciente a más antigua
     const validMatches = (recentMatchesRaw.filter(Boolean) as any[])
       .sort((a, b) => b.timestamp - a.timestamp);
 
@@ -92,20 +98,21 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
     const champStats: Record<string, { games: number; wins: number; losses: number; kills: number; deaths: number; assists: number }> = {};
 
     validMatches.forEach((m) => {
-      if (!champStats[m.champion]) {
-        champStats[m.champion] = { games: 0, wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
+      const champ = m.championName;
+      if (!champStats[champ]) {
+        champStats[champ] = { games: 0, wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
       }
-      champStats[m.champion].games += 1;
-      if (m.win) champStats[m.champion].wins += 1;
-      else champStats[m.champion].losses += 1;
-      champStats[m.champion].kills += m.kills;
-      champStats[m.champion].deaths += m.deaths;
-      champStats[m.champion].assists += m.assists;
+      champStats[champ].games += 1;
+      if (m.win) champStats[champ].wins += 1;
+      else champStats[champ].losses += 1;
+      champStats[champ].kills += m.kills;
+      champStats[champ].deaths += m.deaths;
+      champStats[champ].assists += m.assists;
     });
 
     const topPlayedChampions = Object.entries(champStats)
       .map(([champName, stats]) => ({
-        championName: champName,
+        championName,
         games: stats.games,
         wins: stats.wins,
         losses: stats.losses,
@@ -115,11 +122,11 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
       .sort((a, b) => b.games - a.games || b.winrate - a.winrate)
       .slice(0, 3);
 
-    const tier = soloQ?.tier || 'UNRANKED';
-    const rank = soloQ?.rank || '';
-    const lp = soloQ?.leaguePoints || 0;
-    const wins = soloQ?.wins || 0;
-    const losses = soloQ?.losses || 0;
+    const tier = soloQ?.tier || (cachedData?.tier && cachedData.tier !== 'UNRANKED' ? cachedData.tier : 'UNRANKED');
+    const rank = soloQ?.rank || (cachedData?.rank || '');
+    const lp = soloQ?.leaguePoints !== undefined ? soloQ.leaguePoints : (cachedData?.lp || 0);
+    const wins = soloQ?.wins !== undefined ? soloQ.wins : (cachedData?.wins || 0);
+    const losses = soloQ?.losses !== undefined ? soloQ.losses : (cachedData?.losses || 0);
     const total = wins + losses;
     const winrate = total > 0 ? Math.round((wins / total) * 100) : 0;
 
@@ -128,13 +135,15 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
       score = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)
         ? (TIER_BASE[tier] || 0) + lp
         : (TIER_BASE[tier] || 0) + (DIV_BASE[rank] || 0) + lp;
+    } else if (cachedData?.score) {
+      score = cachedData.score; // Mantener puntaje anterior si falla la liga momentáneamente
     }
 
     const updatedData = {
       riotId: `${account.gameName}#${account.tagLine}`,
       gameName: account.gameName,
       tagLine: account.tagLine,
-      discordId: player.discordId, // 👈 Se envía al frontend
+      discordId: player.discordId,
       tier,
       rank,
       lp,
@@ -142,16 +151,19 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
       losses,
       winrate,
       score,
-      profileIconId: summoner.profileIconId || 29,
+      profileIconId: summoner.profileIconId || cachedData?.profileIconId || 29,
       inGame,
-      topPlayedChampions: topPlayedChampions.length > 0 ? topPlayedChampions : (playerStorage[fullRiotId]?.topPlayedChampions || []),
-      recentMatches: validMatches.length > 0 ? validMatches : (playerStorage[fullRiotId]?.recentMatches || []),
+      topPlayedChampions: topPlayedChampions.length > 0 ? topPlayedChampions : (cachedData?.topPlayedChampions || []),
+      recentMatches: validMatches.length > 0 ? validMatches : (cachedData?.recentMatches || []),
     };
 
-    playerStorage[fullRiotId] = updatedData;
+    // Guardar en Redis permanentemente o hasta la próxima actualización exitosa
+    await redis.set(redisKey, updatedData);
     return updatedData;
   } catch (err) {
-    return playerStorage[fullRiotId] || getDefaultPlayer(player);
+    // Si Riot bota la petición (Rate Limit / Error 429 / 503), devolvemos el caché de Redis anterior
+    if (cachedData) return cachedData;
+    return getDefaultPlayer(player);
   }
 }
 
@@ -160,7 +172,7 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
     riotId: `${player.name}#${player.tag}`,
     gameName: player.name,
     tagLine: player.tag,
-    discordId: player.discordId, // 👈 Se envía en caso de fallback
+    discordId: player.discordId,
     tier: 'UNRANKED',
     rank: '',
     lp: 0,
@@ -176,25 +188,31 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 }
 
 let lastFetchTime = 0;
-const CACHE_DURATION_MS = 60 * 1000; // 1 minuto de caché
+const CACHE_DURATION_MS = 60 * 1000; // 1 minuto de respiro a la API de Riot
 
 export async function GET() {
   const now = Date.now();
 
-  if (Object.keys(playerStorage).length === PLAYERS.length && (now - lastFetchTime < CACHE_DURATION_MS)) {
-    const list = Object.values(playerStorage).sort((a: any, b: any) => b.score - a.score);
-    return NextResponse.json(list);
+  // Intentar cargar la lista desde Redis directamente si se consultó hace menos de 1 minuto
+  const cachedList = await redis.get('global_ranking_cache');
+  const lastFetch = await redis.get('global_ranking_time');
+
+  if (cachedList && lastFetch && (now - Number(lastFetch) < CACHE_DURATION_MS)) {
+    return NextResponse.json(cachedList);
   }
 
+  const results = [];
   for (const p of PLAYERS) {
-    await fetchPlayerData(p);
-    await delay(60);
+    const data = await fetchPlayerData(p);
+    results.push(data);
+    await delay(100); // Pausa prudente para evitar baneo por rate limit de Riot
   }
 
-  lastFetchTime = now;
+  const finalRanking = results.sort((a, b) => b.score - a.score);
 
-  const finalRanking = PLAYERS.map((p) => playerStorage[`${p.name}#${p.tag}`] || getDefaultPlayer(p))
-    .sort((a, b) => b.score - a.score);
+  // Guardar caché global en Redis
+  await redis.set('global_ranking_cache', finalRanking);
+  await redis.set('global_ranking_time', now);
 
   return NextResponse.json(finalRanking);
 }
