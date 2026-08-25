@@ -13,6 +13,7 @@ const PLAYERS = [
   { name: 'Disprezz', tag: 'LAS', discordId: '436304189447077888' },
   { name: 'Wachumeiket', tag: 'LAS', discordId: '471115606092021763' },
   { name: 'Jamie Tarttッ', tag: '999', discordId: '303957248420347905' },
+  { name: 'Nube', tag: 'HXC', discordId: '1098233238859821076' },
 ];
 
 const TIER_BASE: Record<string, number> = {
