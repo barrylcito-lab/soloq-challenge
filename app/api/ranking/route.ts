@@ -188,7 +188,7 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 }
 
 let lastFetchTime = 0;
-const CACHE_DURATION_MS = 60 * 1000; // 1 minuto de respiro a la API de Riot
+const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minuto de respiro a la API de Riot
 
 export async function GET() {
   const now = Date.now();
