@@ -30,7 +30,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
   const redisKey = `player_cache:${fullRiotId}`;
   const headers = { 'X-Riot-Token': RIOT_API_KEY };
 
-  const cachedData = (await redis.get(redisKey)) as any;
+  const cachedData = await redis.get(redisKey);
 
   try {
     // 1. PUUID
@@ -186,7 +186,7 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 }
 
 let lastFetchTime = 0;
-const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutos de caché
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos de caché
 
 export async function GET() {
   // 🧹 Limpiar caché corrupto a la fuerza esta vez
@@ -202,7 +202,7 @@ export async function GET() {
     return NextResponse.json(cachedList);
   }
 
-  const results = [];
+const results = [];
   let index = 0;
   for (const p of PLAYERS) {
     const data = await fetchPlayerData(p);
