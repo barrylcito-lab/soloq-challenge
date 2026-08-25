@@ -5,6 +5,10 @@ import { redis } from "@/lib/redis";
 // GET: Cargar penitencias activas y registro de Blue Shells usadas
 export async function GET() {
   try {
+    // 🧹 Limpiamos el registro viejo para arrancar en 0
+    // (Puedes comentar o borrar estas dos líneas de .del si ya no quieres que se reinicien solos)
+    // await redis.del("used_shells");
+
     const activePenalties = (await redis.get("active_penalties")) || {};
     const usedShells = (await redis.get("used_shells")) || {};
     return NextResponse.json({ activePenalties, usedShells });
@@ -27,7 +31,7 @@ export async function POST(req: Request) {
     const attackerKey = attacker.riotId || attacker.name || "Desconocido";
     const victimKey = victim.riotId || victim.name || "Desconocido";
 
-    // 1. Descontar 1 carga al atacante
+    // 1. Descontar 1 carga al atacante (arrancan desde 0, sumando con las condiciones)
     const usedShells: Record<string, number> = (await redis.get("used_shells")) || {};
     usedShells[attackerKey] = (usedShells[attackerKey] || 0) + 1;
     await redis.set("used_shells", usedShells);
