@@ -65,9 +65,10 @@ export default function Leaderboard() {
     setExpandedPlayer((prev) => (prev === riotId ? null : riotId));
   };
 
+  // MODO TEST: 10 conchas garantizadas para pruebas
   const getAvailableShells = (player: any) => {
     if (!player) return 0;
-    const earned = 1;
+    const earned = 10;
     const used = usedShells[player.riotId] || 0;
     return Math.max(0, earned - used);
   };
@@ -353,10 +354,8 @@ export default function Leaderboard() {
                   const playerEarnedShells = getAvailableShells(p);
                   const isMyself = me?.riotId === p.riotId;
 
-                  // 1. Obtener exactamente las últimas 10 partidas
                   const rawMatches = Array.isArray(p.recentMatches) ? p.recentMatches.slice(0, 10) : [];
 
-                  // 2. Organizar en orden numérico para que fluyan de izquierda a derecha (columna izq: 1-5, columna der: 6-10)
                   const leftCol = rawMatches.slice(0, 5);
                   const rightCol = rawMatches.slice(5, 10);
                   const orderedMatches: any[] = [];
@@ -365,7 +364,6 @@ export default function Leaderboard() {
                     if (rightCol[i]) orderedMatches.push(rightCol[i]);
                   }
 
-                  // 3. Calcular campeones más jugados dinámicamente de esas 10 partidas
                   const champCounts: Record<string, { wins: number; losses: number; kills: number; deaths: number; assists: number; games: number }> = {};
                   rawMatches.forEach((m: any) => {
                     const cName = m.championName || m.champion || m.champName || 'Desconocido';
@@ -561,7 +559,7 @@ export default function Leaderboard() {
                             </div>
                           </div>
 
-                          {/* Historial de las 10 Partidas en orden natural izquierda -> derecha (1 al 5 izq, 6 al 10 der) */}
+                          {/* Historial de las 10 Partidas */}
                           <div>
                             <div className="text-xs font-black text-blue-400 uppercase tracking-widest mb-3">
                               📜 Historial Reciente de SoloQ ({rawMatches.length} Partidas)
