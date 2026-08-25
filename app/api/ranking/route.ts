@@ -202,11 +202,13 @@ export async function GET() {
     return NextResponse.json(cachedList);
   }
 
-  const results = [];
+const results = [];
+  let index = 0;
   for (const p of PLAYERS) {
     const data = await fetchPlayerData(p);
     results.push(data);
-    await delay(100);
+    index++;
+    await delay(250); // Espera 250ms entre cada jugador para no saturar a Riot
   }
 
   const finalRanking = results.sort((a, b) => b.score - a.score);
