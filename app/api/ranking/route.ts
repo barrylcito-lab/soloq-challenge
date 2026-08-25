@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/redis'; // 👈 Usamos tu cliente de Redis existente
 
-const RIOT_API_KEY = 'RGAPI-4233422f-76fa-4b31-98ae-a51d39c4db13';
+const RIOT_API_KEY = 'RGAPI-2c9893df-e0d2-4c44-9cd6-b1aca1f447fe';
 const REGION = 'americas';
 const PLATFORM = 'la2';
 
