@@ -63,7 +63,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
     const inGame = specRes.status === 200;
 
     // 5. Historial SoloQ (15 partidas)
-    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=15`, { headers, cache: 'no-store' });
+    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=8`, { headers, cache: 'no-store' });
     const matchIds: string[] = matchIdsRes.ok ? await matchIdsRes.json() : [];
 
     const recentMatchesRaw = await Promise.all(
