@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { PLAYERS } from '@/lib/players';
 import { redis } from '@/lib/redis'; // 👈 Usamos tu cliente de Redis existente
 
-const RIOT_API_KEY = 'RGAPI-7e3e9493-e119-4da2-9334-157ae5e3fca0';
+const RIOT_API_KEY = process.env.RIOT_API_KEY;
 const REGION = 'americas';
 const PLATFORM = 'la2';
-
-const PLAYERS = [
-  { name: 'Barry', tag: '24081', discordId: '410258026608459786' },
-  { name: 'Tarikk', tag: 'LAS', discordId: '536261498276937749' },
-  { name: 'Bloodme', tag: 'LAS', discordId: '1079568485052579950' },
-  { name: 'DakaH', tag: 'Saiko', discordId: '355153243036188682' },
-  { name: 'Disprezz', tag: 'LAS', discordId: '436304189447077888' },
-  { name: 'Wachumeiket', tag: 'LAS', discordId: '471115606092021763' },
-  { name: 'Jamie Tarttッ', tag: '999', discordId: '303957248420347905' },
-  { name: 'Nube', tag: 'HXC', discordId: '1098233238859821076' },
-];
 
 const TIER_BASE: Record<string, number> = {
   IRON: 0, BRONZE: 400, SILVER: 800, GOLD: 1200,
@@ -28,7 +20,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fetchPlayerData(player: { name: string; tag: string; discordId?: string }) {
   const fullRiotId = `${player.name}#${player.tag}`;
   const redisKey = `player_cache:${fullRiotId}`;
-  const headers = { 'X-Riot-Token': RIOT_API_KEY };
+  const headers = { 'X-Riot-Token': RIOT_API_KEY || '' };
 
   const cachedData = (await redis.get(redisKey)) as any;
 
@@ -198,6 +190,14 @@ const GLOBAL_RANKING_TIME_KEY = 'global_ranking_time:v2';
 export async function GET(request: Request) {
   const now = Date.now();
   const forceRefresh = new URL(request.url).searchParams.get('refresh') === '1';
+
+  if (!RIOT_API_KEY) {
+    return NextResponse.json({ error: 'RIOT_API_KEY no está configurada.' }, { status: 503 });
+  }
+
+  if (forceRefresh && !(await getServerSession(authOptions))) {
+    return NextResponse.json({ error: 'Inicia sesión para actualizar el ranking.' }, { status: 401 });
+  }
 
   const cachedList = await redis.get(GLOBAL_RANKING_CACHE_KEY);
   const lastFetch = await redis.get(GLOBAL_RANKING_TIME_KEY);

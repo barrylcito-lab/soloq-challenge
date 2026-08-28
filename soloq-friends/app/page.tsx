@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import RouletteModal from './RouletteModal';
 import Logo from './Logo';
+import { calculateEarnedBlueShells } from '@/lib/penalties';
 
 export default function Leaderboard() {
   const { data: session, status } = useSession();
@@ -13,6 +14,7 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [adminBusy, setAdminBusy] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const [isRouletteOpen, setIsRouletteOpen] = useState(false);
@@ -65,28 +67,10 @@ export default function Leaderboard() {
     setExpandedPlayer((prev) => (prev === riotId ? null : riotId));
   };
 
-  // MODO REAL: Cálculo de Blue Shells ganadas por rachas (empiezan en 0)
+  // Las Blue Shells se calculan desde el historial SoloQ y se descuentan al usarlas.
   const getAvailableShells = (player: any) => {
     if (!player) return 0;
-    
-    let earned = 0;
-    
-    // Sumar 1 Blue Shell por cada 4 victorias consecutivas
-    if (player.recentMatches && Array.isArray(player.recentMatches)) {
-      let currentStreak = 0;
-      for (const match of player.recentMatches) {
-        if (match.win) {
-          currentStreak++;
-          if (currentStreak === 4) {
-            earned += 1;
-            currentStreak = 0; // Se reinicia para que busque otra racha de 4
-          }
-        } else {
-          currentStreak = 0;
-        }
-      }
-    }
-    
+    const earned = calculateEarnedBlueShells(player);
     const used = usedShells[player.riotId] || 0;
     return Math.max(0, earned - used);
   };
@@ -94,6 +78,35 @@ export default function Leaderboard() {
   const currentDiscordId = (session?.user as any)?.discordId;
   const me = currentDiscordId ? players.find((p) => p.discordId === currentDiscordId) : null;
   const myShells = getAvailableShells(me);
+  const isAdmin = currentDiscordId === '410258026608459786';
+
+  const removePenalty = async (riotId: string) => {
+    if (!window.confirm(`¿Quitar el castigo activo de ${riotId}?`)) return;
+    setAdminBusy(true);
+    try {
+      const response = await fetch(`/api/blueshell?riotId=${encodeURIComponent(riotId)}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error();
+      await loadData(false);
+    } catch {
+      alert('No se pudo quitar el castigo. Intenta otra vez.');
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
+  const resetTournament = async () => {
+    if (!window.confirm('¿Borrar todos los castigos activos y restaurar todas las Blue Shells?')) return;
+    setAdminBusy(true);
+    try {
+      const response = await fetch('/api/blueshell/reset', { method: 'POST' });
+      if (!response.ok) throw new Error();
+      await loadData(false);
+    } catch {
+      alert('No se pudo reiniciar el torneo.');
+    } finally {
+      setAdminBusy(false);
+    }
+  };
 
   const handleLaunchBlueShell = (targetVictim: any) => {
     if (!session) {
@@ -251,9 +264,44 @@ export default function Leaderboard() {
               <span className="hidden sm:inline">{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
             </button>
           </div>
-        </header>
+      </header>
 
-        {errorMsg && (
+      {isAdmin && (
+        <section className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-950/20 p-4 shadow-lg shadow-amber-950/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-black text-amber-300">Panel de Barry</h2>
+              <p className="text-xs text-slate-400">Puedes quitar castigos manualmente si no se pueden rastrear.</p>
+            </div>
+            <button
+              onClick={resetTournament}
+              disabled={adminBusy}
+              className="rounded-xl border border-rose-500/50 bg-rose-950/70 px-3 py-2 text-xs font-black text-rose-200 transition hover:bg-rose-900 disabled:opacity-50"
+            >
+              Limpiar todo el torneo
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {Object.entries(penalties).length > 0 ? (
+              Object.entries(penalties).map(([riotId, penalty]: [string, any]) => (
+                <button
+                  key={riotId}
+                  onClick={() => removePenalty(riotId)}
+                  disabled={adminBusy}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 transition hover:border-amber-400 hover:text-amber-200 disabled:opacity-50"
+                >
+                  Quitar: {riotId} {penalty?.penalty?.id ? `(#${penalty.penalty.id})` : ''}
+                </button>
+              ))
+            ) : (
+              <span className="text-xs italic text-slate-500">No hay castigos activos.</span>
+            )}
+          </div>
+        </section>
+      )}
+
+      {errorMsg && (
           <div className="p-4 rounded-2xl bg-rose-950/90 border border-rose-500/50 text-rose-200 text-xs sm:text-sm flex items-center justify-between gap-3 shadow-lg">
             <span>⚠️ {errorMsg}</span>
             <button

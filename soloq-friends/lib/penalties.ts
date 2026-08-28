@@ -31,27 +31,23 @@ export const PENALTIES: Penalty[] = [
 export function calculateEarnedBlueShells(player: any): number {
   if (!player || !player.recentMatches || player.recentMatches.length === 0) return 0;
 
-  const tier = (player.tier || "UNRANKED").toUpperCase();
-  const isHighElo = ["PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"].includes(tier);
-  const requiredStreak = isHighElo ? 3 : 4;
-
   let earned = 0;
 
-  // 1. Verificar si tiene racha actual activa en sus partidas más recientes
+  // 1. Una Blue Shell por cada grupo de 4 victorias consecutivas.
   let currentStreak = 0;
   for (const match of player.recentMatches) {
     if (match.win) {
       currentStreak++;
+      if (currentStreak === 4) {
+        earned++;
+        currentStreak = 0;
+      }
     } else {
-      break;
+      currentStreak = 0;
     }
   }
 
-  if (currentStreak >= requiredStreak) {
-    earned += 1;
-  }
-
-  // 2. Verificar Pentakill en sus partidas recientes
+  // 2. Un pentakill en las últimas 15 SoloQ entrega una Blue Shell adicional.
   const hasPentakill = player.recentMatches.some((m: any) => m.pentaKills > 0 || m.pentakills > 0);
   if (hasPentakill) {
     earned += 1;

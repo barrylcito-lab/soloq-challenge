@@ -2,10 +2,12 @@ export async function sendBlueShellAlert({
   attacker,
   victim,
   penalty,
+  extraConfig,
 }: {
   attacker: any;
   victim: any;
   penalty: any;
+  extraConfig?: string | null;
 }) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
@@ -57,7 +59,7 @@ export async function sendBlueShellAlert({
           },
           {
             name: `📜 Penitencia Asignada (#${penalty.id})`,
-            value: `>>> **${penalty.text}**`,
+            value: `>>> **${penalty.text}**${extraConfig ? `\n\nDetalle: ${extraConfig}` : ""}`,
             inline: false,
           },
         ],
@@ -68,7 +70,8 @@ export async function sendBlueShellAlert({
       },
     ],
     allowed_mentions: {
-      parse: ["users"],
+      parse: [],
+      users: victimDiscordId ? [victimDiscordId] : [],
     },
   };
 
