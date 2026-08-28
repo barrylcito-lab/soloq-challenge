@@ -26,7 +26,7 @@ export default function Leaderboard() {
 
     try {
       const [resRank, resShellData] = await Promise.all([
-        fetch('/api/ranking').then(async (r) => {
+        fetch(`/api/ranking${isManual ? '?refresh=1' : ''}`, { cache: 'no-store' }).then(async (r) => {
           if (!r.ok) throw new Error(`Error API (${r.status})`);
           return r.json();
         }),

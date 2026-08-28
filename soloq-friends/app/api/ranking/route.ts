@@ -195,13 +195,14 @@ const CACHE_DURATION_MS = 60 * 1000;
 const GLOBAL_RANKING_CACHE_KEY = 'global_ranking_cache:v2';
 const GLOBAL_RANKING_TIME_KEY = 'global_ranking_time:v2';
 
-export async function GET() {
+export async function GET(request: Request) {
   const now = Date.now();
+  const forceRefresh = new URL(request.url).searchParams.get('refresh') === '1';
 
   const cachedList = await redis.get(GLOBAL_RANKING_CACHE_KEY);
   const lastFetch = await redis.get(GLOBAL_RANKING_TIME_KEY);
 
-  if (cachedList && lastFetch && (now - Number(lastFetch) < CACHE_DURATION_MS)) {
+  if (!forceRefresh && cachedList && lastFetch && (now - Number(lastFetch) < CACHE_DURATION_MS)) {
     return NextResponse.json(cachedList);
   }
 
