@@ -71,7 +71,7 @@ export default function Leaderboard() {
   const getAvailableShells = (player: any) => {
     if (!player) return 0;
     const earned = calculateEarnedBlueShells(player);
-    const used = usedShells[player.riotId] || 0;
+    const used = usedShells[player.discordId] ?? usedShells[player.riotId] ?? 0;
     return Math.max(0, earned - used);
   };
 
