@@ -63,7 +63,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
     const inGame = specRes.status === 200;
 
     // 5. Historial SoloQ (15 partidas)
-    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=8`, { headers, cache: 'no-store' });
+    const matchIdsRes = await fetch(`https://${REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=15`, { headers, cache: 'no-store' });
     const matchIds: string[] = matchIdsRes.ok ? await matchIdsRes.json() : [];
 
     const recentMatchesRaw = await Promise.all(
@@ -113,7 +113,7 @@ async function fetchPlayerData(player: { name: string; tag: string; discordId?: 
 
     const topPlayedChampions = Object.entries(champStats)
       .map(([champName, stats]) => ({
-        championName,
+        championName: champName,
         games: stats.games,
         wins: stats.wins,
         losses: stats.losses,
@@ -188,16 +188,16 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 
 let lastFetchTime = 0;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos de caché
+// Nueva versión para no reutilizar la respuesta incompleta que se guardó antes
+// de corregir el historial de partidas.
+const GLOBAL_RANKING_CACHE_KEY = 'global_ranking_cache:v2';
+const GLOBAL_RANKING_TIME_KEY = 'global_ranking_time:v2';
 
 export async function GET() {
-  // 🧹 Limpiar caché corrupto a la fuerza esta vez
-  await redis.del('global_ranking_cache');
-  await redis.del('global_ranking_time');
-
   const now = Date.now();
 
-  const cachedList = await redis.get('global_ranking_cache');
-  const lastFetch = await redis.get('global_ranking_time');
+  const cachedList = await redis.get(GLOBAL_RANKING_CACHE_KEY);
+  const lastFetch = await redis.get(GLOBAL_RANKING_TIME_KEY);
 
   if (cachedList && lastFetch && (now - Number(lastFetch) < CACHE_DURATION_MS)) {
     return NextResponse.json(cachedList);
@@ -209,13 +209,16 @@ export async function GET() {
     const data = await fetchPlayerData(p);
     results.push(data);
     index++;
-    await delay(250); // Espera 250ms entre cada jugador para no saturar a Riot
+    // Cada jugador genera varias solicitudes (perfil, liga y 15 partidas).
+    // Darle un segundo a Riot antes del siguiente evita respuestas 429, que
+    // dejaban el historial vacío aunque el ranking sí alcanzara a cargarse.
+    await delay(1100);
   }
 
   const finalRanking = results.sort((a, b) => b.score - a.score);
 
-  await redis.set('global_ranking_cache', finalRanking);
-  await redis.set('global_ranking_time', now);
+  await redis.set(GLOBAL_RANKING_CACHE_KEY, finalRanking);
+  await redis.set(GLOBAL_RANKING_TIME_KEY, now);
 
   return NextResponse.json(finalRanking);
 }
