@@ -187,7 +187,9 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
 }
 
 let lastFetchTime = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos de caché
+// La interfaz consulta el ranking una vez por minuto: conservarlo más tiempo
+// hace que los elos parezcan detenidos aunque Riot ya tenga datos nuevos.
+const CACHE_DURATION_MS = 60 * 1000;
 // Nueva versión para no reutilizar la respuesta incompleta que se guardó antes
 // de corregir el historial de partidas.
 const GLOBAL_RANKING_CACHE_KEY = 'global_ranking_cache:v2';
