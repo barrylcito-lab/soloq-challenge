@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { ADMIN_DISCORD_ID, authOptions } from "@/lib/auth";
 import { redis } from "@/lib/redis";
 
-export async function GET() {
+export async function POST() {
   try {
-    // 1. Limpiamos todas las penitencias activas de la tabla
+    const session = await getServerSession(authOptions);
+    const discordId = (session?.user as { discordId?: string } | undefined)?.discordId;
+
+    if (discordId !== ADMIN_DISCORD_ID) {
+      return NextResponse.json({ error: "No tienes permiso para reiniciar el torneo." }, { status: 403 });
+    }
+
     await redis.set("active_penalties", {});
-    // 2. Reseteamos el contador de conchas usadas a 0
     await redis.set("used_shells", {});
 
     return NextResponse.json({

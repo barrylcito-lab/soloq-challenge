@@ -186,18 +186,17 @@ function getDefaultPlayer(player: { name: string; tag: string; discordId?: strin
   };
 }
 
-let lastFetchTime = 0;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos de caché
+// v2 evita reutilizar entradas viejas que se guardaron mientras el GET
+// borraba la caché en cada visita (el ranking siempre iba a Riot).
+const GLOBAL_RANKING_CACHE_KEY = 'global_ranking_cache:v2';
+const GLOBAL_RANKING_TIME_KEY = 'global_ranking_time:v2';
 
 export async function GET() {
-  // 🧹 Limpiar caché corrupto a la fuerza esta vez
-  await redis.del('global_ranking_cache');
-  await redis.del('global_ranking_time');
-
   const now = Date.now();
 
-  const cachedList = await redis.get('global_ranking_cache');
-  const lastFetch = await redis.get('global_ranking_time');
+  const cachedList = await redis.get(GLOBAL_RANKING_CACHE_KEY);
+  const lastFetch = await redis.get(GLOBAL_RANKING_TIME_KEY);
 
   if (cachedList && lastFetch && (now - Number(lastFetch) < CACHE_DURATION_MS)) {
     return NextResponse.json(cachedList);
@@ -214,8 +213,8 @@ export async function GET() {
 
   const finalRanking = results.sort((a, b) => b.score - a.score);
 
-  await redis.set('global_ranking_cache', finalRanking);
-  await redis.set('global_ranking_time', now);
+  await redis.set(GLOBAL_RANKING_CACHE_KEY, finalRanking);
+  await redis.set(GLOBAL_RANKING_TIME_KEY, now);
 
   return NextResponse.json(finalRanking);
 }

@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { ADMIN_DISCORD_ID, authOptions } from "@/lib/auth";
 import { sendBlueShellAlert } from "@/lib/discord";
 import { redis } from "@/lib/redis";
+
+async function isAdmin() {
+  const session = await getServerSession(authOptions);
+  const discordId = (session?.user as { discordId?: string } | undefined)?.discordId;
+  return discordId === ADMIN_DISCORD_ID;
+}
 
 // GET: Cargar penitencias activas y registro de Blue Shells usadas
 export async function GET() {
@@ -54,5 +62,28 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error al procesar Blue Shell:", error);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
+}
+
+// DELETE: Quitar manualmente una penitencia activa (solo Barry).
+export async function DELETE(req: Request) {
+  try {
+    if (!(await isAdmin())) {
+      return NextResponse.json({ error: "No tienes permiso para administrar penitencias." }, { status: 403 });
+    }
+
+    const riotId = new URL(req.url).searchParams.get("riotId");
+    if (!riotId || riotId.length > 100) {
+      return NextResponse.json({ error: "Jugador no válido." }, { status: 400 });
+    }
+
+    const activePenalties: Record<string, unknown> = (await redis.get("active_penalties")) || {};
+    delete activePenalties[riotId];
+    await redis.set("active_penalties", activePenalties);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error al borrar la penitencia:", error);
+    return NextResponse.json({ error: "Error al borrar la penitencia." }, { status: 500 });
   }
 }
